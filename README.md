@@ -1,7 +1,9 @@
 # jtext
 
 `jtext` is a lightweight Python utility that recursively scans a directory for files with a given extension and combines their contents into a single text file.
+
 It was primarily designed to prepare codebases for LLMs, making it easy to provide an entire project (or selected parts of it) as a single prompt for code review, explanation, refactoring, documentation, or other AI-assisted development tasks.
+
 It can also find it's use in backups.
 
 ## Requirements
