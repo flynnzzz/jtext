@@ -22,23 +22,20 @@ def main(args=sys.argv[1:]):
     EXIST_ERR = " error: no file exists at the specified path\n -> "
     DIR_ERR = " path not allowed: The specified path must point to a directory\n -> "
     FLAG_ERR = " unrecognized flag: "
-
     MIN_ARGS: int = 2
     MAX_ARGS: int = 3
-
     SEPARATOR: str = "/" if system() == "Linux" else r"/"
     # cant know for sure if this works for windows rn
 
     flags: list = [a for a in args if a.startswith("-")]
 
-    #
     if "-h" in flags:
         print(USAGE)
         exit(0)
 
     allowed_flags = ["-p", "-v"]
-
     wrong_flags: list = [f for f in flags if f not in allowed_flags]
+
     if len(wrong_flags) > 0:
         print(FLAG_ERR + wrong_flags[0])
         exit(-1)
@@ -55,23 +52,24 @@ def main(args=sys.argv[1:]):
         exit(-2)
 
     # verify args validity
-    extension: str = args[0]
+    extension: str = args[0].replace(".", "") if args[0].startswith(".") else args[0]
+
     source: str = args[1]
     destination: str = args[2] if len(args) == MAX_ARGS else getcwd()
 
     if not exists(source):
         print(EXIST_ERR + str(source))
         exit(-3)
-
     if not exists(destination):
         print(EXIST_ERR + str(destination))
         exit(-3)
-
     if not isdir(destination):
         print(DIR_ERR + str(destination))
         exit(-4)
 
     files: list = filter_ext(source, extension, verbose)
+    files.sort()
+
     filename: str = source.split(SEPARATOR).pop() + "-output.txt"
 
     join_to_text(files, SEPARATOR, destination, filename, printf)
@@ -80,6 +78,7 @@ def main(args=sys.argv[1:]):
     exit(0)
 
 
+# just a wrapper for scan_dir()
 def filter_ext(path: str, extension: str, verbose=False) -> list:
     files = []
     scan_dir(path, extension, files, verbose)
