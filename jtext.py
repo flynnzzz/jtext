@@ -1,5 +1,5 @@
 import sys
-from os import listdir, getcwd
+from os import listdir, getcwd, sep
 from os.path import isdir, isfile, exists, join
 from platform import system
 
@@ -24,8 +24,7 @@ def main(args=sys.argv[1:]):
     FLAG_ERR = " unrecognized flag: "
     MIN_ARGS: int = 2
     MAX_ARGS: int = 3
-    SEPARATOR: str = "/" if system() == "Linux" else r"/"
-    # cant know for sure if this works for windows rn
+    SEPARATOR: str = sep
 
     flags: list = [a for a in args if a.startswith("-")]
 
@@ -69,8 +68,13 @@ def main(args=sys.argv[1:]):
 
     files: list = filter_ext(source, extension, verbose)
     files.sort()
+    
+    sourcepath: list = source.split(SEPARATOR)
+    # if present, remove the tailing '/'
+    if source.endswith(SEPARATOR):
+        sourcepath.pop()
 
-    filename: str = source.split(SEPARATOR).pop() + "-output.txt"
+    filename: str = sourcepath.pop() + f"-{extension}-output.txt" 
 
     join_to_text(files, SEPARATOR, destination, filename, printf)
 
