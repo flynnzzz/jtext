@@ -1,10 +1,9 @@
 import sys
 from os import listdir, getcwd, sep
-from os.path import isdir, isfile, exists, join
-from platform import system
+from os.path import isdir, isfile, exists, join, abspath, normpath
 
 
-def main(args=sys.argv[1:]):
+def main(arguments: list):
 
     CMD_ERR = "unrecognized args: for more information -> python jtext.py -h"
     USAGE = """usage: [python | python3] jtext [OPTIONS] <ext> <src> [<dest>]
@@ -26,6 +25,7 @@ def main(args=sys.argv[1:]):
     MAX_ARGS: int = 3
     SEPARATOR: str = sep
 
+    args: list = arguments
     flags: list = [a for a in args if a.startswith("-")]
 
     if "-h" in flags:
@@ -66,15 +66,18 @@ def main(args=sys.argv[1:]):
         print(DIR_ERR + str(destination))
         exit(-4)
 
+    source = str(normpath(abspath(source)))
+    destination = str(normpath(abspath(destination)))
+
     files: list = filter_ext(source, extension, verbose)
     files.sort()
-    
+
     sourcepath: list = source.split(SEPARATOR)
     # if present, remove the tailing '/'
     if source.endswith(SEPARATOR):
         sourcepath.pop()
 
-    filename: str = sourcepath.pop() + f"-{extension}-output.txt" 
+    filename: str = sourcepath.pop() + f"-{extension}-output.txt"
 
     join_to_text(files, SEPARATOR, destination, filename, printf)
 
@@ -124,7 +127,7 @@ def join_to_text(
 
 if __name__ == "__main__":
     try:
-        main()
+        main(sys.argv[1:])
     except BrokenPipeError:
         sys.stdout.close()
         exit(0)
