@@ -3,7 +3,7 @@ from os import listdir, getcwd, sep
 from os.path import isdir, isfile, exists, join, abspath, normpath
 
 
-def main(arguments: list):
+def main(args: list):
 
     CMD_ERR = "unrecognized args: for more information -> python jtext.py -h"
     USAGE = """usage: [python | python3] jtext [OPTIONS] <ext> <src> [<dest>]
@@ -25,7 +25,6 @@ def main(arguments: list):
     MAX_ARGS: int = 3
     SEPARATOR: str = sep
 
-    args: list = arguments
     flags: list = [a for a in args if a.startswith("-")]
 
     if "-h" in flags:
@@ -43,18 +42,20 @@ def main(arguments: list):
     verbose: bool = any(f for f in flags if f == "-v")
     printf: bool = any(f for f in flags if f == "-p")
 
-    args: list = [a for a in args if not a.startswith("-")]
+    trueargs: list = [a for a in args if not a.startswith("-")]
 
-    # verify args existence
-    if len(args) < MIN_ARGS or len(args) > MAX_ARGS:
+    # verify trueargs existence
+    if len(trueargs) < MIN_ARGS or len(trueargs) > MAX_ARGS:
         print(CMD_ERR)
         exit(-2)
 
-    # verify args validity
-    extension: str = args[0].replace(".", "") if args[0].startswith(".") else args[0]
+    # verify trueargs validity
+    extension: str = (
+        trueargs[0].replace(".", "") if trueargs[0].startswith(".") else trueargs[0]
+    )
 
-    source: str = args[1]
-    destination: str = args[2] if len(args) == MAX_ARGS else getcwd()
+    source: str = trueargs[1]
+    destination: str = trueargs[2] if len(trueargs) == MAX_ARGS else getcwd()
 
     if not exists(source):
         print(EXIST_ERR + str(source))
