@@ -1,11 +1,11 @@
 import sys
 from os import listdir, getcwd, sep
-from os.path import isdir, isfile, exists, join, abspath, normpath
+from os.path import expanduser, isdir, isfile, exists, join, abspath, normpath
 
 
 def main(args: list):
 
-    CMD_ERR = "unrecognized args: for more information -> python jtext.py -h"
+    CMD_ERR = "unrecognized args, for more information: python jtext.py -h"
     USAGE = """usage: [python | python3] jtext [OPTIONS] <ext> <src> [<dest>]
         OPTIONS:
             -h print this message
@@ -16,7 +16,7 @@ def main(args: list):
         - src: path to the project to convert
         - dest: path to the destination directory of the output
 
-        e.g.: python jtext 'java' 'path/to/java/project' 'path/to/destination/folder'"""
+        e.g.: python jtext '.java' 'path/to/java/project' 'path/to/destination/folder'"""
 
     EXIST_ERR = " error: no file exists at the specified path\n -> "
     DIR_ERR = " path not allowed: The specified path must point to a directory\n -> "
@@ -26,14 +26,11 @@ def main(args: list):
     SEPARATOR: str = sep
 
     flags: list = [a for a in args if a.startswith("-")]
-
     if "-h" in flags:
         print(USAGE)
         exit(0)
-
     allowed_flags = ["-p", "-v"]
     wrong_flags: list = [f for f in flags if f not in allowed_flags]
-
     if len(wrong_flags) > 0:
         print(FLAG_ERR + wrong_flags[0])
         exit(-1)
@@ -42,14 +39,12 @@ def main(args: list):
     verbose: bool = any(f for f in flags if f == "-v")
     printf: bool = any(f for f in flags if f == "-p")
 
-    trueargs: list = [a for a in args if not a.startswith("-")]
-
     # verify trueargs existence
+    trueargs: list = [a for a in args if not a.startswith("-")]
     if len(trueargs) < MIN_ARGS or len(trueargs) > MAX_ARGS:
         print(CMD_ERR)
         exit(-2)
 
-    # verify trueargs validity
     extension: str = (
         trueargs[0].replace(".", "") if trueargs[0].startswith(".") else trueargs[0]
     )
@@ -67,10 +62,10 @@ def main(args: list):
         print(DIR_ERR + str(destination))
         exit(-4)
 
-    source = str(normpath(abspath(source)))
-    destination = str(normpath(abspath(destination)))
+    source = str(normpath(abspath(expanduser(source))))
+    destination = str(normpath(abspath(expanduser(destination))))
 
-    files: list = filter_ext(source, extension, verbose)
+    files: list = filter_ext(source, extension, verbose=verbose)
     files.sort()
 
     sourcepath: list = source.split(SEPARATOR)
@@ -80,7 +75,7 @@ def main(args: list):
 
     filename: str = sourcepath.pop() + f"-{extension}-output.txt"
 
-    join_to_text(files, SEPARATOR, destination, filename, printf)
+    join_to_text(files, SEPARATOR, dest=destination, output=filename, printf=printf)
 
     print(f" - Successfully created output file in {destination}!")
     exit(0)
@@ -130,5 +125,8 @@ if __name__ == "__main__":
     try:
         main(sys.argv[1:])
     except BrokenPipeError:
+        sys.stdout.close()
+        exit(0)
+    except KeyboardInterrupt:
         sys.stdout.close()
         exit(0)
