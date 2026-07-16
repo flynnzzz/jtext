@@ -13,9 +13,9 @@ It can also find it's use in backups.
 ## Usage
 
 ```bash
-python jtext.py [OPTIONS] <ext> <src> [<dest>]
+python jtext.py [OPTIONS] [<ext>] <src> [<dest>]
 # or
-python3 jtext.py [OPTIONS] <ext> <src> [<dest>]
+python3 jtext.py [OPTIONS] [<ext>] <src> [<dest>]
 ```
 
 ### Options
@@ -25,12 +25,13 @@ python3 jtext.py [OPTIONS] <ext> <src> [<dest>]
 | `-h`   | Display the help message and exit.       |
 | `-v`   | Enable verbose output.                   |
 | `-p`   | Print the generated text to the console. |
+| `-A`   | Include every possible UTF-8 encoded file extension. |
 
 ### Args
 
 | Argument   | Description                                                                                            |
 | ---------- | ------------------------------------------------------------------------------------------------------ |
-| `<ext>`    | File extension to include. The leading `.` can be freely omitted.                                                   |
+| `[<ext>]`    | File extension to include. The leading `.` can be freely omitted.                                                   |
 | `<src>`    | Path to the source directory to scan recursively.                                                      |
 | `[<dest>]` | Optional destination directory for the output file. If omitted, the current working directory is used. |
 
