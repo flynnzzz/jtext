@@ -2,31 +2,36 @@ import sys
 from os import listdir, getcwd, sep
 from os.path import expanduser, isdir, isfile, exists, join, abspath, normpath
 
-
-CMD_ERR = "unrecognized args, for more information: python jtext.py -h"
-USAGE = """usage: [python | python3] jtext [OPTIONS] <ext> <src> [<dest>]
+USAGE = """usage: [python | python3] jtext [OPTIONS] [%<ext>] <src> [<dest>]
     OPTIONS:
         -h print this message
 
         -v enable verbose output
         -p print the output of the command to the console
 
-        -A include all convertible extensions, if this option is enabled the
-            passed in extension will be ignored
+        -i allow hidden files to be scanned
 
-    - ext: file extension to filter
+    - ext: file extensions to filter, has to be prefixed with '%'
     - src: path to the project to convert
     - dest: path to the destination directory of the output
 
-    e.g.: python jtext '.java' 'path/to/java/project' 'path/to/destination/folder'"""
+    e.g.: python jtext '%java' 'path/to/java/project' 'path/to/destination/folder'
+"""
+
+ARGS_ERR = "unrecognized args, for more information: python jtext.py -h"
 
 EXIST_ERR = " error: no file exists at the specified path\n -> "
+
 DIR_ERR = " path not allowed: The specified path must point to a directory\n -> "
+
 FLAG_ERR = " unrecognized flag: "
+
 SEPARATOR: str = sep
-ALL_EXTENSIONS = "INCLUDE_EVERYTHING"
-MIN_ARGS = 2
-MAX_ARGS = 3
+
+EXTENSION_PREFIX = "%"
+
+MIN_ARGS = 1
+MAX_ARGS = 2
 
 
 def main(args: list):
@@ -35,38 +40,37 @@ def main(args: list):
     if "-h" in flags:
         print(USAGE)
         exit(0)
-    allowed_flags: set = {"-p", "-v", "-A"}
+    allowed_flags: set = {"-p", "-v", "-i"}
     wrong_flags: list = [f for f in flags if f not in allowed_flags]
     if len(wrong_flags) > 0:
         print(FLAG_ERR + wrong_flags[0])
         exit(-1)
 
-    # active flags
-    enable_verbose: bool = any(f for f in flags if f == "-v")
-    print_output: bool = any(f for f in flags if f == "-p")
-    include_all_extensions: bool = any(f for f in flags if f == "-A")
-
-    # verify trueargs existence
-    trueargs: list = [a for a in args if not a.startswith("-")]
-    if include_all_extensions:
-        match len(trueargs):
-            case 1:
-                trueargs.insert(0, ALL_EXTENSIONS)
-            case 2:
-                trueargs[0] = ALL_EXTENSIONS
-            case _:
-                print(USAGE)
-                exit(-1)
-    if len(trueargs) < MIN_ARGS or len(trueargs) > MAX_ARGS:
-        print(CMD_ERR)
-        exit(-2)
-
-    extension: str = (
-        trueargs[0].replace(".", "") if trueargs[0].startswith(".") else trueargs[0]
+    extensions: list = list(
+        map(
+            lambda e: e.replace("%", ""),
+            [a for a in args if a.startswith(EXTENSION_PREFIX)],
+        )
     )
 
-    source: str = trueargs[1]
-    destination: str = trueargs[2] if len(trueargs) == MAX_ARGS else getcwd()
+    # active flags
+    print_output: bool = any(f for f in flags if f == "-p")
+    enable_verbose: bool = any(f for f in flags if f == "-v")
+    include_hidden: bool = any(f for f in flags if f == "-i")
+
+    # filter 'trueargs'
+    trueargs: list = [
+        a for a in args if not a.startswith("-") and not a.startswith(EXTENSION_PREFIX)
+    ]
+    if len(trueargs) < MIN_ARGS or len(trueargs) > MAX_ARGS:
+        print(ARGS_ERR)
+        exit(-2)
+
+    source: str = trueargs[0]
+    destination: str = trueargs[1] if len(trueargs) == MAX_ARGS else getcwd()
+
+    source = str(normpath(abspath(expanduser(source))))
+    destination = str(normpath(abspath(expanduser(destination))))
 
     if not exists(source):
         print(EXIST_ERR + str(source))
@@ -78,10 +82,12 @@ def main(args: list):
         print(DIR_ERR + str(destination))
         exit(-4)
 
-    source = str(normpath(abspath(expanduser(source))))
-    destination = str(normpath(abspath(expanduser(destination))))
-
-    files: list = filter_ext(source, extension, verbose=enable_verbose)
+    files: list = filter_ext(
+        source, extensions, verbose=enable_verbose, include_hidden=include_hidden
+    )
+    if len(files) == 0:
+        print("--- No matching file found, exiting ---")
+        exit(0)
     files.sort()
 
     sourcepath: list = source.split(SEPARATOR)
@@ -89,42 +95,45 @@ def main(args: list):
     if source.endswith(SEPARATOR):
         sourcepath.pop()
 
-    filename: str = (
-        sourcepath.pop() + f"-{extension}-output.txt"
-        if not include_all_extensions
-        else sourcepath.pop() + "-output.txt"
-    )
-
+    filename: str = sourcepath.pop() + "-output.txt"
     join_to_text(
         files, dest=destination, outputfile=filename, print_output=print_output
     )
 
-    print(f" - Successfully created output file in {destination}!")
+    print(f"--- Successfully created output file in {destination}! ---")
     exit(0)
 
 
 # just a wrapper for scan_dir()
-def filter_ext(path: str, extension: str, verbose=False) -> list:
+def filter_ext(
+    path: str, extensions: list, verbose=False, include_hidden=False
+) -> list:
     files = []
     if verbose:
-        if extension == ALL_EXTENSIONS:
-            print(f" scanning files in: {path}...")
+        if len(extensions) == 0:
+            print(f" scanning all files in: {path}...")
         else:
-            print(f"filtering .{extension} files in: {path}")
-    scan_dir(path, extension, files, verbose)
+            print(f"filtering {extensions} files in: {path}")
+    scan_dir(path, extensions, files, verbose, include_hidden)
     return files
 
 
-def scan_dir(path, extension, files, verbose):
+def scan_dir(path, extensions, files, verbose, include_hidden):
     msg: str
-    if isfile(path) and (extension in path.split(".") or extension == ALL_EXTENSIONS):
+    if isfile(path) and (
+        any(e for e in extensions if e in path.split(".")) or len(extensions) == 0
+    ):
         msg = f" -> file found!: {path}"
         files.append(path)
     elif isdir(path):
-        msg = f" scanning... {path}"
-        nothidden = [f for f in listdir(path) if not str(f).startswith(".")]
-        for file in nothidden:
-            scan_dir(join(path, file), extension, files, verbose)
+        msg = f" scanned: {path}"
+        directory = (
+            [f for f in listdir(path) if not str(f).startswith(".")]
+            if not include_hidden
+            else listdir(path)
+        )
+        for file in directory:
+            scan_dir(join(path, file), extensions, files, verbose, include_hidden)
     else:
         msg = f" skipping file: {path}"
     if verbose:
@@ -148,7 +157,12 @@ def join_to_text(
     if print_output:
         with open(join(dest, outputfile), "r", encoding="utf-8") as readfile:
             print(
-                f" - Output:\n-------------------------------------------------------------\n{readfile.read()}"
+                f"""
+-------------------------------------------------------------
+                          Output
+-------------------------------------------------------------
+{readfile.read()}
+"""
             )
 
 
