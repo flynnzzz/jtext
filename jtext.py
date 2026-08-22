@@ -18,7 +18,7 @@ USAGE = """usage: [python | python3] jtext [OPTIONS] [%<ext>] <src> [<dest>]
     e.g.: python jtext '%java' 'path/to/java/project' 'path/to/destination/folder'
 """
 
-ARGS_ERR = "unrecognized args, for more information: python jtext.py -h"
+ARGS_ERR = " unrecognized args, for more information: python jtext.py -h"
 
 EXIST_ERR = " error: no file exists at the specified path\n -> "
 
@@ -86,7 +86,7 @@ def main(args: list):
         source, extensions, verbose=enable_verbose, include_hidden=include_hidden
     )
     if len(files) == 0:
-        print("--- No matching file found, exiting ---")
+        print("[INFO] No matching file found, exiting")
         exit(0)
     files.sort()
 
@@ -100,13 +100,13 @@ def main(args: list):
         files, dest=destination, outputfile=filename, print_output=print_output
     )
 
-    print(f"--- Successfully created output file in {destination}! ---")
+    print(f"[INFO] Successfully created output file in {destination}!")
     exit(0)
 
 
 # just a wrapper for scan_dir()
 def filter_ext(
-    path: str, extensions: list, verbose=False, include_hidden=False
+    path: str, extensions: list[str], verbose=False, include_hidden=False
 ) -> list:
     files = []
     if verbose:
@@ -118,19 +118,15 @@ def filter_ext(
     return files
 
 
-def scan_dir(path, extensions, files, verbose, include_hidden):
+def scan_dir(path: str, extensions: list, files: list, verbose, include_hidden) -> None:
     msg: str
-    if isfile(path) and (
-        any(e for e in extensions if e in path.split(".")) or len(extensions) == 0
-    ):
+    if isfile(path) and (match_extensions(path, extensions) or len(extensions) == 0):
         msg = f" -> file found!: {path}"
         files.append(path)
     elif isdir(path):
         msg = f" scanned: {path}"
-        directory = (
-            [f for f in listdir(path) if not str(f).startswith(".")]
-            if not include_hidden
-            else listdir(path)
+        directory: list = (
+            listdir_skip_hidden(path) if not include_hidden else listdir(path)
         )
         for file in directory:
             scan_dir(join(path, file), extensions, files, verbose, include_hidden)
@@ -149,8 +145,8 @@ def join_to_text(
         for file in files:
             try:
                 with open(file, "r", encoding="utf-8") as readfile:
-                    contents = readfile.read()
-                    format = f"\nfile: {file.split(SEPARATOR).pop()}\nfull path: {file}\n\n{contents}\n"
+                    contents: str = readfile.read()
+                    format: str = f"\nfile: {file.split(SEPARATOR).pop()}\nfull path: {file}\n\n{contents}\n"
                     appendfile.write(format)
             except UnicodeDecodeError:
                 print(f" skipping not utf-8 encoded file: {file}")
@@ -164,6 +160,14 @@ def join_to_text(
 {readfile.read()}
 """
             )
+
+
+def match_extensions(path: str, extensions: list[str]) -> bool:
+    return any(e for e in extensions if e == path.split(".").pop())
+
+
+def listdir_skip_hidden(path: str) -> list[str]:
+    return [f for f in listdir(path) if not str(f).startswith(".")]
 
 
 if __name__ == "__main__":
