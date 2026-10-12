@@ -4,12 +4,10 @@ from os.path import abspath, exists, expanduser, isdir, isfile, join, normpath
 
 USAGE = """usage: python jtext [OPTIONS] [%ext] <src> [dest]
     OPTIONS:
-        -h print this message
-
         -v enable verbose output
         -p print the output of the command to the console
-
         -i allow hidden files to be scanned
+        -h print this message
 
     - ext: file extensions to filter, has to be prefixed with '%'
     - src: path to the project to convert
@@ -36,7 +34,7 @@ MAX_ARGS = 2
 
 def main(args: list):
 
-    flags: list = [a for a in args if a.startswith("-")]
+    flags: list = [arg for arg in args if arg.startswith("-")]
     if "-h" in flags:
         print(USAGE)
         sys.exit(0)
@@ -46,12 +44,10 @@ def main(args: list):
         print(FLAG_ERR + wrong_flags[0])
         sys.exit(-1)
 
-    extensions: list = list(
-        map(
-            lambda e: e.replace("%", ""),
-            [a for a in args if a.startswith(EXTENSION_PREFIX)],
-        )
-    )
+    extensions: list = [
+        ext.replace(EXTENSION_PREFIX, "")
+        for ext in [arg for arg in args if arg.startswith(EXTENSION_PREFIX)]
+    ]
 
     # active flags
     print_output: bool = any(f for f in flags if f == "-p")
