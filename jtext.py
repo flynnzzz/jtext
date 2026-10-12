@@ -1,8 +1,8 @@
 import sys
-from os import listdir, getcwd, sep
-from os.path import expanduser, isdir, isfile, exists, join, abspath, normpath
+from os import getcwd, listdir, sep
+from os.path import abspath, exists, expanduser, isdir, isfile, join, normpath
 
-USAGE = """usage: [python | python3] jtext [OPTIONS] [%<ext>] <src> [<dest>]
+USAGE = """usage: python jtext [OPTIONS] [%ext] <src> [dest]
     OPTIONS:
         -h print this message
 
@@ -39,12 +39,12 @@ def main(args: list):
     flags: list = [a for a in args if a.startswith("-")]
     if "-h" in flags:
         print(USAGE)
-        exit(0)
+        sys.exit(0)
     allowed_flags: set = {"-p", "-v", "-i"}
     wrong_flags: list = [f for f in flags if f not in allowed_flags]
     if len(wrong_flags) > 0:
         print(FLAG_ERR + wrong_flags[0])
-        exit(-1)
+        sys.exit(-1)
 
     extensions: list = list(
         map(
@@ -64,7 +64,7 @@ def main(args: list):
     ]
     if len(trueargs) < MIN_ARGS or len(trueargs) > MAX_ARGS:
         print(ARGS_ERR)
-        exit(-2)
+        sys.exit(-2)
 
     source: str = trueargs[0]
     destination: str = trueargs[1] if len(trueargs) == MAX_ARGS else getcwd()
@@ -74,34 +74,32 @@ def main(args: list):
 
     if not exists(source):
         print(EXIST_ERR + str(source))
-        exit(-3)
+        sys.exit(-3)
     if not exists(destination):
         print(EXIST_ERR + str(destination))
-        exit(-3)
+        sys.exit(-3)
     if not isdir(destination):
         print(DIR_ERR + str(destination))
-        exit(-4)
+        sys.exit(-4)
 
-    files: list = filter_ext(
-        source, extensions, verbose=enable_verbose, include_hidden=include_hidden
-    )
+    files: list = filter_ext(source, extensions, enable_verbose, include_hidden)
     if len(files) == 0:
         print("[INFO] No matching file found, exiting")
-        exit(0)
+        sys.exit(0)
+
     files.sort()
 
     sourcepath: list = source.split(SEPARATOR)
+
     # if present, remove the tailing '/'
     if source.endswith(SEPARATOR):
         sourcepath.pop()
 
     filename: str = sourcepath.pop() + "-output.txt"
-    join_to_text(
-        files, dest=destination, outputfile=filename, print_output=print_output
-    )
+    join_to_text(files, destination, filename, print_output)
 
     print(f"[INFO] Successfully created output file in {destination}!")
-    exit(0)
+    sys.exit(0)
 
 
 # just a wrapper for scan_dir()
@@ -137,8 +135,8 @@ def scan_dir(path: str, extensions: list, files: list, verbose, include_hidden) 
 
 
 def join_to_text(
-    files: list, dest=getcwd(), outputfile="output.txt", print_output=False
-):
+    files: list, dest, outputfile="output.txt", print_output=False
+) -> None:
     with open(join(dest, outputfile), "w", encoding="utf-8") as createfile:
         createfile.write("")
     with open(join(dest, outputfile), "a", encoding="utf-8") as appendfile:
@@ -175,7 +173,7 @@ if __name__ == "__main__":
         main(sys.argv[1:])
     except BrokenPipeError:
         sys.stdout.close()
-        exit(0)
+        sys.exit(0)
     except KeyboardInterrupt:
         sys.stdout.close()
-        exit(0)
+        sys.exit(0)
