@@ -1,11 +1,12 @@
 import sys
-from os import getcwd, listdir, sep
+from os import getcwd, listdir, remove, sep
 from os.path import abspath, exists, expanduser, isdir, isfile, join, normpath
 
 USAGE = """usage: python jtext [OPTIONS] [%ext] <src> [dest]
     OPTIONS:
         -v enable verbose output
         -p print the output of the command to the console
+        -a append the output to a file
         -i allow hidden files to be scanned
         -h print this message
 
@@ -17,28 +18,22 @@ USAGE = """usage: python jtext [OPTIONS] [%ext] <src> [dest]
 """
 
 ARGS_ERR = " unrecognized args, for more information: python jtext.py -h"
-
 EXIST_ERR = " error: no file exists at the specified path\n -> "
-
 DIR_ERR = " path not allowed: The specified path must point to a directory\n -> "
-
 FLAG_ERR = " unrecognized flag: "
 
 SEPARATOR: str = sep
-
 EXTENSION_PREFIX = "%"
-
 MIN_ARGS = 1
 MAX_ARGS = 2
 
 
 def main(args: list):
-
     flags: list = [arg for arg in args if arg.startswith("-")]
     if "-h" in flags:
         print(USAGE)
         sys.exit(0)
-    allowed_flags: set = {"-p", "-v", "-i"}
+    allowed_flags: set = {"-p", "-v", "-i", "-a"}
     wrong_flags: list = [f for f in flags if f not in allowed_flags]
     if len(wrong_flags) > 0:
         print(FLAG_ERR + wrong_flags[0])
@@ -53,6 +48,7 @@ def main(args: list):
     print_output: bool = any(f for f in flags if f == "-p")
     enable_verbose: bool = any(f for f in flags if f == "-v")
     include_hidden: bool = any(f for f in flags if f == "-i")
+    enable_append: bool = any(f for f in flags if f == "-a")
 
     # filter 'trueargs'
     trueargs: list = [
@@ -71,12 +67,6 @@ def main(args: list):
     if not exists(source):
         print(EXIST_ERR + str(source))
         sys.exit(-3)
-    if not exists(destination):
-        print(EXIST_ERR + str(destination))
-        sys.exit(-3)
-    if not isdir(destination):
-        print(DIR_ERR + str(destination))
-        sys.exit(-4)
 
     files: list = filter_ext(source, extensions, enable_verbose, include_hidden)
     if len(files) == 0:
@@ -91,10 +81,18 @@ def main(args: list):
     if source.endswith(SEPARATOR):
         sourcepath.pop()
 
-    filename: str = sourcepath.pop() + "-output.txt"
-    join_to_text(files, destination, filename, print_output)
+    filename: str = (
+        destination if not isdir(destination) else sourcepath.pop() + "-output.txt"
+    )
+    join_to_text(files, destination, filename, print_output, enable_append)
 
-    print(f"[INFO] Successfully created output file in {destination}!")
+    if not print_output:
+        success_message: str = (
+            f"[INFO] Successfully created output file in {destination}!"
+            if not enable_append
+            else f"[INFO] Successfully appended to output file in {destination}!"
+        )
+        print(success_message)
     sys.exit(0)
 
 
@@ -131,29 +129,29 @@ def scan_dir(path: str, extensions: list, files: list, verbose, include_hidden) 
 
 
 def join_to_text(
-    files: list, dest, outputfile="output.txt", print_output=False
+    files: list,
+    dest: str,
+    outputfile="output.txt",
+    print_output=False,
+    enable_append=False,
 ) -> None:
-    with open(join(dest, outputfile), "w", encoding="utf-8") as createfile:
-        createfile.write("")
-    with open(join(dest, outputfile), "a", encoding="utf-8") as appendfile:
-        for file in files:
-            try:
-                with open(file, "r", encoding="utf-8") as readfile:
-                    contents: str = readfile.read()
-                    format: str = f"\nfile: {file.split(SEPARATOR).pop()}\nfull path: {file}\n\n{contents}\n"
-                    appendfile.write(format)
-            except UnicodeDecodeError:
-                print(f" skipping not utf-8 encoded file: {file}")
-    if print_output:
-        with open(join(dest, outputfile), "r", encoding="utf-8") as readfile:
-            print(
-                f"""
--------------------------------------------------------------
-                          Output
--------------------------------------------------------------
-{readfile.read()}
-"""
-            )
+    dest_path = join(dest, outputfile)
+    if not enable_append and not print_output:
+        with open(dest_path, "w", encoding="utf-8") as createfile:
+            createfile.write("")
+
+    appendfile = (
+        open(dest_path, "a", encoding="utf-8") if not print_output else sys.stdout
+    )
+    for file in files:
+        try:
+            with open(file, "r", encoding="utf-8") as readfile:
+                contents: str = readfile.read()
+                format: str = f"\nfile: {file.split(SEPARATOR).pop()}\nfull path: {file}\n\n{contents}\n"
+                appendfile.write(format)
+        except UnicodeDecodeError:
+            print(f" skipping not utf-8 encoded file: {file}")
+    appendfile.close()
 
 
 def match_extensions(path: str, extensions: list[str]) -> bool:
